@@ -2,7 +2,7 @@ import { WebSocketServer } from 'ws';
 
 // Create WebSocket server with proper configuration
 const wss = new WebSocketServer({ 
-  port: 8080,
+  port: process.env.PORT || 8080,
   // Allow connections from localtunnel
   verifyClient: (info) => {
     const origin = info.req.headers.origin || '';

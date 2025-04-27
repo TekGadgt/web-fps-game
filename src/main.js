@@ -2,11 +2,7 @@ import * as THREE from 'three';
 import { loadArenaTextures } from './textureLoader.js';
 
 // WebSocket Configuration
-const WS_URL = window.location.hostname === 'localhost' 
-    ? 'ws://localhost:8080'
-    : window.location.hostname.includes('loca.lt')
-        ? 'wss://fps-game-ws.loca.lt'
-        : 'ws://localhost:8080';
+const WS_URL = 'ws://web-fps-game-ws.onrender.com:8080';
 
 // Debug log WebSocket URL
 console.log('Using WebSocket URL:', WS_URL);
