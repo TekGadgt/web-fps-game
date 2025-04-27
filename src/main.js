@@ -2,7 +2,8 @@ import * as THREE from 'three';
 import { loadArenaTextures } from './textureLoader.js';
 
 // WebSocket Configuration
-console.log('Using WebSocket URL:', import.meta.env.WS_URL);
+const WS_URL = import.meta.env.VITE_WS_URL;
+console.log('Using WebSocket URL:', WS_URL);
 
 // Local Storage Keys
 const STORAGE_KEY = 'fps_game_player_id';
