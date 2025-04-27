@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>FPS Game</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      html, body {
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        overflow: hidden;
+        background: black;
+      }
+      canvas {
+        width: 100%;
+        height: 100%;
+        display: block;
+      }
+      #teleport-prompt {
+        position: absolute;
+        left: 50%;
+        top: 60%;
+        transform: translate(-50%, -50%);
+        color: white;
+        font-family: Arial, sans-serif;
+        font-size: 20px;
+        text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.7);
+        pointer-events: none;
+        opacity: 0;
+        transition: opacity 0.3s ease;
+      }
+      #teleport-prompt.visible {
+        opacity: 1;
+      }
+      #score-container {
+        position: absolute;
+        top: 20px;
+        right: 20px;
+        color: white;
+        font-family: Arial, sans-serif;
+        font-size: 24px;
+        text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+        pointer-events: none;
+      }
+      #debug-overlay {
+        position: absolute;
+        top: 20px;
+        left: 20px;
+        color: white;
+        font-family: monospace;
+        font-size: 14px;
+        text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+        pointer-events: none;
+        background-color: rgba(0, 0, 0, 0.5);
+        padding: 10px;
+        border-radius: 5px;
+      }
+      #debug-overlay div {
+        margin: 3px 0;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="score-container">Score: 0</div>
+    <div id="teleport-prompt">Press E to teleport</div>
+    <div id="debug-overlay">
+      <div id="coords">Position: (0, 0, 0)</div>
+      <div id="player-count">Players: 1</div>
+      <div id="player-list">Players Online:</div>
+    </div>
+    <div id="player-id-modal" class="modal">
+      <div class="modal-content">
+        <h2>Enter Your Player ID</h2>
+        <input type="text" id="player-id-input" placeholder="Enter your player ID" maxlength="15">
+        <button id="player-id-submit">Start Game</button>
+      </div>
+    </div>
+    <script type="module" src="/src/main.js"></script>
+
+    <style>
+      .modal {
+        display: none;
+        position: fixed;
+        z-index: 1000;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0,0,0,0.5);
+      }
+      .modal-content {
+        background-color: #333;
+        margin: 15% auto;
+        padding: 20px;
+        border: 1px solid #888;
+        width: 300px;
+        text-align: center;
+        border-radius: 5px;
+        color: white;
+      }
+      #player-id-input {
+        width: 80%;
+        padding: 10px;
+        margin: 10px 0;
+        border: none;
+        border-radius: 3px;
+        background-color: #444;
+        color: white;
+      }
+      #player-id-submit {
+        padding: 10px 20px;
+        background-color: #4CAF50;
+        color: white;
+        border: none;
+        border-radius: 3px;
+        cursor: pointer;
+      }
+      #player-id-submit:hover {
+        background-color: #45a049;
+      }
+    </style>
+  </body>
+</html>
