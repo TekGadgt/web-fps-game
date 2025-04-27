@@ -4,7 +4,8 @@ export default defineConfig({
   server: {
     allowedHosts: [
       'localhost',
-      'fps-game-web.loca.lt'
+      'fps-game-web.loca.lt',
+      'web-fps-game-ws.onrender.com'
     ],
     hmr: {
       // Enable HMR through localtunnel
