@@ -2,10 +2,7 @@ import * as THREE from 'three';
 import { loadArenaTextures } from './textureLoader.js';
 
 // WebSocket Configuration
-const WS_URL = 'wss://web-fps-game-ws.onrender.com';
-
-// Debug log WebSocket URL
-console.log('Using WebSocket URL:', WS_URL);
+console.log('Using WebSocket URL:', process.env.WS_URL);
 
 // Local Storage Keys
 const STORAGE_KEY = 'fps_game_player_id';
