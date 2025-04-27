@@ -3,7 +3,6 @@ import { loadArenaTextures } from './textureLoader.js';
 
 // WebSocket Configuration
 const WS_URL = import.meta.env.VITE_WS_URL;
-console.log('Using WebSocket URL:', WS_URL);
 
 // Local Storage Keys
 const STORAGE_KEY = 'fps_game_player_id';
@@ -91,7 +90,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const requestedId = playerIdInput.value.trim();
         const chosenColor = playerColorInput.value;
         if (requestedId) {
-            console.log('Setting player ID to:', requestedId);
             localStorage.setItem(STORAGE_KEY, requestedId);
             localStorage.setItem(COLOR_KEY, chosenColor);
             playerColor = chosenColor;
@@ -145,7 +143,6 @@ window.addEventListener('keydown', (event) => {
         const key = event.key.toLowerCase();
         if (key === 'w' || key === 'd' || key === 's' || key === 'a') {
             event.preventDefault();
-            console.log(`Ctrl+${key.toUpperCase()} pressed: Default behavior prevented.`);
         }
     }
 });
@@ -222,7 +219,6 @@ function connectToServerWithId(requestedId, color) {
         ws = null;
     }
     
-    console.log('Connecting to WebSocket server at:', WS_URL);
     const colorToSend = color || playerColor;
     
     try {
@@ -237,7 +233,6 @@ function connectToServerWithId(requestedId, color) {
         }, 10000);
         
         ws.onopen = () => {
-            console.log('Connected to server, registering with ID:', requestedId);
             clearTimeout(connectionTimeout);
             reconnectAttempts = 0;
             
@@ -252,7 +247,6 @@ function connectToServerWithId(requestedId, color) {
         ws.onmessage = (event) => {
             try {
                 const data = JSON.parse(event.data);
-                console.log('Received message:', data.type);
                 
                 if (data.type === 'error') {
                     if (data.message.includes('already taken')) {
@@ -271,7 +265,6 @@ function connectToServerWithId(requestedId, color) {
         };
 
         ws.onclose = (event) => {
-            console.log(`Disconnected from server: ${event.code} ${event.reason}`);
             clearTimeout(connectionTimeout);
             otherPlayers.clear();
             
@@ -279,12 +272,10 @@ function connectToServerWithId(requestedId, color) {
             const storedId = localStorage.getItem(STORAGE_KEY);
             if (storedId && reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
                 reconnectAttempts++;
-                console.log(`Attempting to reconnect (${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS}) with stored ID:`, storedId);
                 
                 // Exponential backoff for reconnection attempts
                 const backoffDelay = Math.min(1000 * Math.pow(1.5, reconnectAttempts), 10000);
                 
-                console.log(`Reconnecting in ${backoffDelay/1000} seconds...`);
                 setTimeout(() => connectToServerWithId(storedId, colorToSend), backoffDelay);
             } else {
                 if (reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
@@ -346,7 +337,6 @@ function handleServerMessage(data) {
 
         case 'scoreUpdate':
             if (data.id === playerId && isRespawning) {
-                console.log('Ignoring score update during respawn cooldown.');
                 return; // Ignore score updates during respawn cooldown
             }
             updatePlayerScore(data);
@@ -399,14 +389,6 @@ function addOtherPlayer(playerData) {
     const myArenaIndex = getCurrentArenaIndex();
     const theirArenaIndex = playerData.currentArenaIndex || 0;
     playerModel.visible = myArenaIndex === theirArenaIndex;
-    
-    // Debug logging
-    console.log(`Adding new player ${playerData.id}:`, {
-        position: position.toArray(),
-        visible: playerModel.visible,
-        myArena: myArenaIndex,
-        theirArena: theirArenaIndex
-    });
 
     // Add name label above head
     const nameLabel = createNameLabel(playerData.id);
@@ -500,7 +482,6 @@ function respawnPlayer() {
     player.verticalVelocity = 0;
     player.isGrounded = true;
     
-    console.log(`Player respawned in arena ${randomArena} at position:`, camera.position.toArray());
     
     // Broadcast respawn position immediately to ensure other players see us
     sendPosition(true);
@@ -515,17 +496,12 @@ function updatePlayerScore(data) {
             // Always teleport on respawn message
             respawnPlayer();
             if (!isRespawning) {
-                console.log('Player hit! Starting respawn cooldown...');
                 isRespawning = true;
                 setTimeout(() => {
                     isRespawning = false;
-                    console.log('Respawn cooldown ended.');
                 }, 2000); // 2-second cooldown
-            } else {
-                console.log('Already respawning, but teleporting again to ensure player is moved.');
             }
         } else if (isRespawning) {
-            console.log('Ignoring hit during respawn cooldown.');
             return; // Ignore additional hits during respawn cooldown
         }
 
@@ -537,7 +513,6 @@ function updatePlayerScore(data) {
         const player = otherPlayers.get(data.id);
         if (player) {
             player.score = data.score;
-            console.log(`Updated score for player ${data.id}: ${player.score}`);
         }
     }
 
@@ -943,9 +918,6 @@ const cornerLights = [
   return light;
 });
 
-// Debugging: Log objects in the scene
-console.log('Scene children:', scene.children);
-
 // Adjust camera position
 camera.position.set(0, 5, 10);
 camera.lookAt(0, 0, 0);
@@ -1258,14 +1230,6 @@ function createProjectile(position, direction, ownerId, isPlayer, colorHexOrInt)
   scene.add(projectile);
   projectiles.push(projectile);
 
-  // Debug log
-  console.log('Projectile created:', {
-    position: projectile.position.toArray(),
-    velocity: projectile.velocity.toArray(),
-    ownerId,
-    isPlayer
-  });
-
   return projectile;
 }
 
@@ -1355,11 +1319,6 @@ function updateProjectiles(delta) {
         if (now - projectile.spawnTime > PROJECTILE_LIFETIME) {
             scene.remove(projectile);
             projectiles.splice(i, 1);
-            // Debug log
-            console.log('Projectile expired and removed:', {
-                position: projectile.position.toArray(),
-                ownerId: projectile.ownerId
-            });
             continue;
         }
 
@@ -1378,11 +1337,6 @@ function updateProjectiles(delta) {
                     projectile.position.y > ARENA_SIZE.height) {
                     scene.remove(projectile);
                     projectiles.splice(i, 1);
-                    // Debug log
-                    console.log('Projectile hit wall or out of bounds and removed:', {
-                        position: projectile.position.toArray(),
-                        ownerId: projectile.ownerId
-                    });
                     break;
                 }
             }
@@ -1391,11 +1345,6 @@ function updateProjectiles(delta) {
         if (!inArena) {
             scene.remove(projectile);
             projectiles.splice(i, 1);
-            // Debug log
-            console.log('Projectile left arena and removed:', {
-                position: projectile.position.toArray(),
-                ownerId: projectile.ownerId
-            });
         }
     }
 }
