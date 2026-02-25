@@ -20,6 +20,7 @@
     "vite": "^6.3.1"
   },
   "dependencies": {
+    "@lookingglass/webxr": "^0.6.0",
     "three": "^0.176.0",
     "ws": "^8.18.1"
   }

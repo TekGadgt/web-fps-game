@@ -1,5 +1,19 @@
 import * as THREE from 'three';
+import { VRButton } from 'three/addons/webxr/VRButton.js';
 import { loadArenaTextures } from './textureLoader.js';
+import { LookingGlassWebXRPolyfill, LookingGlassConfig } from "@lookingglass/webxr";
+
+// Looking Glass Configuration
+const lgConfig = LookingGlassConfig;
+lgConfig.targetY = 0;
+lgConfig.targetZ = 0;
+lgConfig.targetDiam = 3;
+lgConfig.fovy = (40 * Math.PI) / 180;
+lgConfig.depthiness = 0.5;
+lgConfig.inlineView = 1;
+lgConfig.filterMode = 2;
+lgConfig.gaussianSigma = 0.01;
+const lgPolyfill = new LookingGlassWebXRPolyfill();
 
 // WebSocket Configuration
 const WS_URL = import.meta.env.VITE_WS_URL;
@@ -562,6 +576,56 @@ document.body.appendChild(renderer.domElement);
 // Enable shadows
 renderer.shadowMap.enabled = true;
 
+// Enable WebXR for Looking Glass support
+renderer.xr.enabled = true;
+document.body.appendChild(VRButton.createButton(renderer));
+
+// Looking Glass state tracking.
+// The polyfill overwrites camera.position and camera.quaternion each frame,
+// so we maintain our own copy of the player's true world state and restore it
+// before game logic runs. The polyfill's WASD/mouse trackball handlers are
+// allowed to run but have no lasting effect because we overwrite targetX/Y/Z
+// and trackballX/Y every frame.
+let isLookingGlassActive = false;
+const playerWorldPos = new THREE.Vector3();
+
+function setFrustumCulling(enabled) {
+  scene.traverse((obj) => {
+    if (obj.isMesh) obj.frustumCulled = enabled;
+  });
+}
+
+renderer.xr.addEventListener('sessionstart', () => {
+  isLookingGlassActive = true;
+  playerWorldPos.copy(camera.position);
+  // Disable frustum culling — LG multi-view cameras have different frustums
+  // than the main camera, causing objects to pop in/out incorrectly
+  setFrustumCulling(false);
+  // Move gun to scene for world-space positioning in LG mode
+  if (typeof gunModel !== 'undefined') {
+    camera.remove(gunModel);
+    scene.add(gunModel);
+  }
+  // Hide the Looking Glass controls panel (may not exist yet, so retry briefly)
+  function hideLGControls() {
+    const lgControls = document.getElementById('LookingGlassWebXRControls');
+    if (lgControls) lgControls.style.display = 'none';
+    else setTimeout(hideLGControls, 100);
+  }
+  hideLGControls();
+});
+renderer.xr.addEventListener('sessionend', () => {
+  isLookingGlassActive = false;
+  setFrustumCulling(true);
+  // Restore gun as camera child
+  if (typeof gunModel !== 'undefined') {
+    scene.remove(gunModel);
+    camera.add(gunModel);
+    gunModel.position.set(0.3, -0.3, -0.5);
+    gunModel.quaternion.identity();
+  }
+});
+
 // Set a background color for the scene
 scene.background = new THREE.Color(0x87ceeb); // Sky blue color
 
@@ -843,7 +907,7 @@ function createArenaWithPads(position, index) {
   const arenaGroup = new THREE.Group();
   
   // Create base arena
-  const baseArena = createArena(100, 10, 100, ARENA_COLORS[index]);
+  const baseArena = createArena(100, 20, 100, ARENA_COLORS[index]);
   arenaGroup.add(baseArena);
   
   // Add teleport pads for this arena
@@ -974,10 +1038,15 @@ let isMouseLocked = false;
 
 // Setup pointer lock and fullscreen
 document.addEventListener('click', (event) => {
+  // Don't hijack clicks on the Looking Glass VRButton
+  if (event.target.closest('#VRButton')) {
+    return;
+  }
+
   // Only request pointer lock if modal is not visible
   if (!isMouseLocked && playerIdModal.style.display !== 'block') {
     renderer.domElement.requestPointerLock();
-    
+
     // Request fullscreen
     const element = document.documentElement;
     if (element.requestFullscreen) {
@@ -1024,22 +1093,22 @@ window.addEventListener('keydown', (event) => {
 
 // Mouse look
 window.addEventListener('mousemove', (event) => {
-  if (!isMouseLocked) return; // Only handle mouse movement when locked
-  
+  if (!isMouseLocked && !isLookingGlassActive) return;
+
   // Update both pitch (x) and yaw (y)
   player.euler.x -= event.movementY * 0.002;
   player.euler.y -= event.movementX * 0.002;
-  
+
   // Clamp the pitch rotation to prevent over-rotation
   player.euler.x = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, player.euler.x));
-  
+
   // Apply rotation to camera
   camera.quaternion.setFromEuler(player.euler);
 });
 
 // Collision detection
 const PLAYER_RADIUS = 2.5;
-const ARENA_SIZE = { width: 100, height: 10, depth: 100 };
+const ARENA_SIZE = { width: 100, height: 20, depth: 100 };
 
 function checkArenaCollision(position) {
   const correction = new THREE.Vector3();
@@ -1226,6 +1295,7 @@ function createProjectile(position, direction, ownerId, isPlayer, colorHexOrInt)
   projectile.spawnTime = Date.now();
   projectile.ownerId = ownerId; // Track the owner of the projectile
   projectile.castShadow = true;
+  if (isLookingGlassActive) projectile.frustumCulled = false;
 
   scene.add(projectile);
   projectiles.push(projectile);
@@ -1358,16 +1428,21 @@ camera.add(gunModel);
 
 // Mouse click handling for shooting
 document.addEventListener('mousedown', (event) => {
-  if (!isMouseLocked || !playerId) return;
+  if ((!isMouseLocked && !isLookingGlassActive) || !playerId) return;
 
   if (event.button === 0) { // Left click
+    // Use player.euler as source of truth for aim direction — during Looking Glass
+    // mode the polyfill may have overwritten camera.quaternion between frames.
+    const aimQuat = new THREE.Quaternion().setFromEuler(player.euler);
+    const aimPos = isLookingGlassActive ? playerWorldPos : camera.position;
+
     const direction = new THREE.Vector3(0, 0, -1);
-    direction.applyQuaternion(camera.quaternion);
+    direction.applyQuaternion(aimQuat);
 
     // Create projectile starting from gun position
     const gunOffset = new THREE.Vector3(0.3, -0.3, -1);
-    gunOffset.applyQuaternion(camera.quaternion);
-    const projectileStart = camera.position.clone().add(gunOffset);
+    gunOffset.applyQuaternion(aimQuat);
+    const projectileStart = aimPos.clone().add(gunOffset);
 
     createProjectile(projectileStart, direction, playerId, true, playerColor); // Pass playerColor (hex string)
 
@@ -1544,9 +1619,17 @@ function update(delta) {
     // Add gun bobbing effect
     if (gunModel) {
         const bobOffsetY = Math.sin(player.bobTimer) * player.bobMagnitude * (isSprinting ? player.sprintBobMultiplier : 1);
-        const bobOffsetX = Math.cos(player.bobTimer) * player.bobMagnitude * 0.5; // Smaller horizontal bob
-        gunModel.position.set(0.3, -0.3 + bobOffsetY, -0.5);
-        gunModel.position.x = 0.3 + bobOffsetX;
+        const bobOffsetX = Math.cos(player.bobTimer) * player.bobMagnitude * 0.5;
+        if (isLookingGlassActive) {
+            // In LG mode, position gun in world space using tracked player state
+            const gunLocal = new THREE.Vector3(0.3 + bobOffsetX, -0.6 + bobOffsetY, -0.5);
+            const aimQuat = new THREE.Quaternion().setFromEuler(player.euler);
+            gunLocal.applyQuaternion(aimQuat);
+            gunModel.position.copy(playerWorldPos).add(gunLocal);
+            gunModel.quaternion.copy(aimQuat);
+        } else {
+            gunModel.position.set(0.3 + bobOffsetX, -0.3 + bobOffsetY, -0.5);
+        }
     }
 
     // Interpolate other players' positions
@@ -1556,23 +1639,44 @@ function update(delta) {
     updateDebugOverlay();
 }
 
-// Animation loop
+// Animation loop (using setAnimationLoop for WebXR/Looking Glass support)
 let lastTime = 0;
-function animate(time) {
+renderer.setAnimationLoop(function animate(time) {
   const delta = (time - lastTime) / 1000;
   lastTime = time;
 
+  // Restore camera state from our own tracking before game logic runs.
+  // The polyfill overwrites camera.position and camera.quaternion during render.
+  if (isLookingGlassActive) {
+    // Restore position from our tracking (polyfill overwrites it during render)
+    camera.position.copy(playerWorldPos);
+    // Restore rotation from player.euler (the source of truth for look direction).
+    // player.euler is updated by the mousemove handler between frames and is
+    // never touched by the polyfill, so it always has the correct look direction.
+    camera.quaternion.setFromEuler(player.euler);
+  }
+
   update(delta);
   updateProjectiles(delta);
-  
+
+  // Save game-logic camera state and sync to Looking Glass config.
+  // Also reset trackball so the polyfill's own WASD/mouse handlers have no effect.
+  if (isLookingGlassActive) {
+    playerWorldPos.copy(camera.position);
+    lgConfig.targetX = camera.position.x;
+    lgConfig.targetY = camera.position.y;
+    lgConfig.targetZ = camera.position.z;
+    // Map player look direction to polyfill's trackball.
+    // Polyfill applies: rotate(trackballX, Y-axis) then rotate(-trackballY, X-axis)
+    lgConfig.trackballX = player.euler.y;
+    lgConfig.trackballY = -player.euler.x;
+  }
+
   // Send position update to server
   sendPosition();
-  
+
   // Update debug overlay
   updateDebugOverlay();
-  
-  renderer.render(scene, camera);
-  requestAnimationFrame(animate);
-}
 
-animate();
+  renderer.render(scene, camera);
+});
