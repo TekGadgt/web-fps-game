@@ -582,6 +582,9 @@ document.body.appendChild(renderer.domElement);
 
 // Enable shadows
 renderer.shadowMap.enabled = true;
+// Brighten output (helps Looking Glass lenticular display)
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.5;
 
 // Enable WebXR for Looking Glass support
 renderer.xr.enabled = true;
@@ -994,9 +997,9 @@ camera.position.set(0, 5, 10);
 camera.lookAt(0, 0, 0);
 
 // Adjust light intensities
-ambientLight.intensity = 0.4;
-pointLight1.intensity = 1;
-cornerLights.forEach(light => light.intensity = 0.6);
+ambientLight.intensity = 0.8;
+pointLight1.intensity = 1.4;
+cornerLights.forEach(light => light.intensity = 0.9);
 
 // Player controls
 const player = {
