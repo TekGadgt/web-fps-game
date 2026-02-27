@@ -1450,7 +1450,9 @@ document.addEventListener('mousedown', (event) => {
     direction.applyQuaternion(aimQuat);
 
     // Create projectile starting from gun position
-    const gunOffset = new THREE.Vector3(0.3, -0.3, -1);
+    // In Looking Glass mode, reduce forward offset so projectiles appear to exit the gun
+    const gunZ = isLookingGlassActive ? -0.4 : -1;
+    const gunOffset = new THREE.Vector3(0.3, -0.3, gunZ);
     gunOffset.applyQuaternion(aimQuat);
     const projectileStart = aimPos.clone().add(gunOffset);
 
