@@ -5,6 +5,8 @@ import { LookingGlassWebXRPolyfill, LookingGlassConfig } from "@lookingglass/web
 
 // Looking Glass Configuration
 const lgConfig = LookingGlassConfig;
+lgConfig.tileHeight = 1024;
+lgConfig.numViews = 45;
 lgConfig.targetY = 0;
 lgConfig.targetZ = 0;
 lgConfig.targetDiam = 3;
@@ -397,6 +399,13 @@ function addOtherPlayer(playerData) {
         : new THREE.Vector3(playerData.position.x, playerData.position.y, playerData.position.z);
     
     playerModel.position.copy(position);
+    // Disable frustum culling if Looking Glass is active — LG multi-view cameras
+    // have different frustums, causing player models to pop in/out incorrectly
+    if (isLookingGlassActive) {
+        playerModel.traverse((obj) => {
+            if (obj.isMesh) obj.frustumCulled = false;
+        });
+    }
     scene.add(playerModel);
     
     // Initial visibility check
