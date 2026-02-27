@@ -5,8 +5,7 @@ import { LookingGlassWebXRPolyfill, LookingGlassConfig } from "@lookingglass/web
 
 // Looking Glass Configuration
 const lgConfig = LookingGlassConfig;
-lgConfig.tileHeight = 1024;
-lgConfig.numViews = 45;
+lgConfig.quiltResolution = { width: 8192, height: 8192 };
 lgConfig.targetY = 0;
 lgConfig.targetZ = 0;
 lgConfig.targetDiam = 3;
